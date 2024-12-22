@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { formatDistance } from 'date-fns'
 
-export const revalidate = 0 // Disable cache for this page
+export const revalidate = 0 
 
 export default async function Home() {
   const cookieStore = cookies()

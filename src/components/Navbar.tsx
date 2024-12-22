@@ -1,21 +1,22 @@
+// src/components/Navbar.tsx
 'use client'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Session } from '@supabase/auth-helpers-nextjs'
 
-type NavbarProps = {
-  session: Session | null
-}
-
-export default function Navbar({ session }: NavbarProps) {
-  const [user, setUser] = useState(session?.user ?? null)
+export default function Navbar() {
+  const [user, setUser] = useState<any>(null)
   const supabase = createClientComponentClient()
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+
+    getUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
 
@@ -27,7 +28,7 @@ export default function Navbar({ session }: NavbarProps) {
   }
 
   return (
-    <nav className="bg-gray-900 shadow-lg">
+    <nav className="bg-gray-800 shadow-lg">
       <div className="mx-auto px-4 container">
         <div className="flex justify-between h-16">
           <div className="flex items-center">

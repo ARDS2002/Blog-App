@@ -1,51 +1,76 @@
-// src/app/page.tsx
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import Link from 'next/link'
-import { formatDistance } from 'date-fns'
+'use client'
+import { useState } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
 
-export const dynamic = 'force-dynamic'
+export default function NewPost() {
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const router = useRouter()
+  const supabase = createClientComponentClient()
 
-export default async function Home() {
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient({
-    cookies: () => cookieStore
-  })
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        router.push('/auth/signin')
+        return
+      }
 
-  const { data: posts, error } = await supabase
-    .from('posts')
-    .select('*')
-    .eq('published', true)
-    .order('created_at', { ascending: false })
+      const slug = title.toLowerCase().replace(/[^\w-]+/g, '-')
+      
+      const { error } = await supabase.from('posts').insert({
+        title,
+        content,
+        user_id: user.id,
+        slug,
+        published: true,
+      })
 
-  if (error) {
-    console.error('Error fetching posts:', error)
-    return <div>Error loading posts</div>
+      if (error) {
+        console.error('Error:', error)
+        throw error
+      }
+
+      router.push('/dashboard')
+      router.refresh()
+    } catch (error) {
+      console.error('Error creating post:', error)
+    }
   }
 
   return (
-    <div>
-      <h1 className="mb-8 font-bold text-3xl">Latest Posts</h1>
-      <div className="gap-6 grid">
-        {posts?.map((post) => (
-          <article key={post.id} className="p-6 border rounded-lg">
-            <h2 className="mb-2 font-bold text-2xl">
-              <Link href={`/posts/${post.slug}`}>{post.title}</Link>
-            </h2>
-            <p className="mb-4 text-gray-600">
-              {post.content.substring(0, 200)}...
-            </p>
-            <p className="text-gray-500 text-sm">
-              {formatDistance(new Date(post.created_at), new Date(), {
-                addSuffix: true,
-              })}
-            </p>
-          </article>
-        ))}
-        {(!posts || posts.length === 0) && (
-          <p className="text-gray-500">No posts available.</p>
-        )}
-      </div>
+    <div className="mx-auto max-w-2xl">
+      <h1 className="mb-8 font-bold text-3xl">Create New Post</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block mb-2">Title</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="p-2 border rounded w-full"
+            required
+          />
+        </div>
+        <div>
+          <label className="block mb-2">Content</label>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="p-2 border rounded w-full h-64"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded text-white"
+        >
+          Publish Post
+        </button>
+      </form>
     </div>
   )
 }
