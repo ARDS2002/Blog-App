@@ -1,19 +1,27 @@
+// src/app/page.tsx
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { formatDistance } from 'date-fns'
 
-export const revalidate = 0 // Disable cache for this page
+export const dynamic = 'force-dynamic'
 
 export default async function Home() {
   const cookieStore = cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const supabase = createServerComponentClient({
+    cookies: () => cookieStore
+  })
 
-  const { data: posts } = await supabase
+  const { data: posts, error } = await supabase
     .from('posts')
     .select('*')
     .eq('published', true)
     .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching posts:', error)
+    return <div>Error loading posts</div>
+  }
 
   return (
     <div>
@@ -34,7 +42,7 @@ export default async function Home() {
             </p>
           </article>
         ))}
-        {!posts?.length && (
+        {(!posts || posts.length === 0) && (
           <p className="text-gray-500">No posts available.</p>
         )}
       </div>

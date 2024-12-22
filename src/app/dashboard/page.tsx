@@ -1,23 +1,36 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
-import { formatDistance } from 'date-fns'
+import { redirect } from 'next/navigation'
 
-export const revalidate = 0 // Disable cache for this page
+export const dynamic = 'force-dynamic'
 
-export default async function Home() {
+export default async function Dashboard() {
   const cookieStore = cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const supabase = createServerComponentClient({
+    cookies: () => cookieStore
+  })
+  
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (!session) {
+    redirect('/auth/signin')
+  }
 
-  const { data: posts } = await supabase
+  const { data: posts, error } = await supabase
     .from('posts')
     .select('*')
-    .eq('published', true)
+    .eq('user_id', session.user.id)
     .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching posts:', error)
+    return <div>Error loading posts</div>
+  }
 
   return (
     <div>
-      <h1 className="mb-8 font-bold text-3xl">Latest Posts</h1>
+      <h1 className="mb-8 font-bold text-3xl">Your Posts</h1>
       <div className="gap-6 grid">
         {posts?.map((post) => (
           <article key={post.id} className="p-6 border rounded-lg">
@@ -28,14 +41,12 @@ export default async function Home() {
               {post.content.substring(0, 200)}...
             </p>
             <p className="text-gray-500 text-sm">
-              {formatDistance(new Date(post.created_at), new Date(), {
-                addSuffix: true,
-              })}
+              Status: {post.published ? 'Published' : 'Draft'}
             </p>
           </article>
         ))}
-        {!posts?.length && (
-          <p className="text-gray-500">No posts available.</p>
+        {(!posts || posts.length === 0) && (
+          <p className="text-gray-500">No posts yet. Create your first post!</p>
         )}
       </div>
     </div>
